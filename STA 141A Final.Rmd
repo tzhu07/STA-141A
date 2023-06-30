@@ -1,0 +1,734 @@
+---
+title: "STA 141A Final Project"
+author:   
+  - Junqing He, junehe@ucdavis.edu
+  - Ziyi Zeng,  jerzeng@ucdavis.edu
+  - Yucheng Zhao, yuczhao@ucdavis.edu
+  - Tracy Zhu, tcizhu@ucdavis.edu
+  - Haitong Zhu, htjzhu@ucdavis.edu
+date: "11/27/2022"
+output:
+  html_document: default
+  pdf_document: default
+---
+# Contribution
+
+Ziyi Zeng and Haitong Zhu are mainly responsible for coding and the final integration of the project report. Ziyi mainly writes code to preliminarily process the data and visually present the relationship between the data variables. Haitong mainly codes for the model establishment and analysis. Junqing He is mainly responsible for writing the introduction of the project, the description of data variables, and the analysis of data visualization. Tracy Zhu and Yucheng Zhao are mainly responsible for interpreting the results and writing the methodology, model analysis, conclusions, and answers to our research questions in our report. All team members held 3 discussion meetings together and contributed to the project efficiently and successfully.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE,echo = FALSE)
+```
+
+
+
+```{r read data}
+#read data
+heart_data<- read.csv("~/Desktop/UCD/Fall 2022/STA 141A/Final Project/heart_2020_cleaned.csv")
+
+#head(heart_data)
+heart_data <- na.omit(heart_data)#remove RA data
+#dim(heart_data)
+```
+
+```{r, message=F}
+require(ggplot2)
+require(class)
+require(caret)
+require(MASS)
+library(GGally)
+library(ggpubr)
+library(tidyverse)
+library(dplyr)
+```
+
+```{r}
+heart_data[sapply(heart_data, is.character)] <- lapply(heart_data[sapply(heart_data, is.character)], as.factor)
+heart_data$HeartDisease <- as.factor(heart_data$HeartDisease)
+```
+
+
+# Introduction and Background
+The heart is the muscle at the center of the cardiovascular system and has the primary function of circulating blood and oxygen around the human body. Because of this re- sponsibility, small abnormalities may have significant harmful effects to the body. The association of disorders of the heart and blood vessels are defined as cardiovascular dis- ease (CVD). This includes coronary heart disease, cerebrovascular disease, peripheral arterial disease, rheumatic heart disease, continental heart disease, deep vein thrombosis and pulmonary embolism [1].
+
+The American Heart Association (AHA) reports that about 25% of the population in the United States currently have some form of cardiovascular disease (CVD) and about 47% of all Americans have at least 1 of 3 key risk factors for heart disease – high blood pressure, high cholesterol, and smoking. One person dies every 36 seconds because of CVD and 1 in every 4 deaths is related to heart disease. Furthermore, 20% of heart attacks are silent and patients are not aware of the damage done to their bodies. Recently, the sudden onset of the COVID-19 pandemic has raised the risk for CVD patients. The most common clinical manifestations of COVID-19 are respiratory related, which can arise as a mild flu-like sickness to potentially fatal acute respiratory distress syndrome or fulminant pneumonia [2]. Acute cardiac injury, heart failure, and arrhythmia are among some of the reported cardiovascular complications in patients, along with COVID-19. This indicates people who already have pre-existing CVD are more vulnerable to COVID-19 variants than those who do not.
+
+Many types of CVD have extensive pre-symptomatic stages during which low-cost treat- ment can help improve results. Our project aims to use statistics methods to analyze the known factors of CVD patients. The models list out the factors that correlate to the existence of CVD. Then, a patient suspecting of CVD could ask for the professional analysis such as echocardiographic screening [4], test for C-reactive protein (CPR) [3], or they can pay extra attention to their diet and daily consumption[5] to prevent the CVD.
+
+The prevalence of CVD makes it the leading cause of death for both men and women in the United States. However, the World Health Organization estimates that over 75% of premature CVD is preventable. Therefore, detecting and preventing the factors of heart disease have a great impact on the health of the United States population.
+
+
+
+# Methodology overview 
+To begin with, we observed, cleaned, and organized the raw data. We attempt to measure the performance of a model for predicting heart disease. To identify and remove errors and duplicate data to create usable datasets, we first use `na.omit` to find the data with missing values and clean them out. Then we are able to remove the rows containing missing values to prevent data corruption or failure to record data. 
+
+After processing the original data, we plan to use the supervised learning technique in this project. We split data into the training set and the test set to avoid overfitting. We chose 80% of the rows in the data for the training set and the rest 20% for the testing set randomly. [1]
+
+Then we create a Generalized linear model (GLM) model with the data in the training set, the dependent variable is heart disease, while the 17 independent variables are BMI, Smoking, Alcohol Drinking, Stroke, Physical Health, Mental Health, Diff Walking, Sex, Age Catagory, Race, Diabetic, Physical Activity, Gen Health, Sleep Time, Asthma, Kidney Disease, and Skin Cancer. It is clear that we should use binomial regression to fit the model because we want to find the relationship between the probability of success of the binomially distributed variable Heart Disease and 17 independent variables. 
+  
+After creating the preliminary model, we intend to verify whether the model's predictions are valid or not. So we made a confusion matrix and create a ROC curve (receiver operating characteristic curve) based on that which uses the results from the training set to predict 20% of the data to test the accuracy rate. 
+	
+Next, We calculate F1 score from the confusion matrix for the GLM model and compare the F1 scores among the different models. The model with a higher F1 score is better to classify the observations, showing more accuracy of the data performance on the data set. 
+	
+We observed that the number of individuals who reported that they had heart disease (yes) was significantly less than the number who did not have heart disease (no). Since we need to balance data to make the model more accurate, we look for the total number of “yes” data in heart disease and then randomly select the same number of “no” data. Then we combine these two equal numbers of data into `data_new`.
+	
+Lastly, we did the same visualization and GLM analysis as the first model again with the new data.
+
+# Dataset Description and Exploratory Data Analysis
+The chosen dataset is the 2020 annual CDC survey of the health status of 400k adults in the United States. The data is a part of the Behavioral Risk Factor Surveillance System (BRFSS), which conducts annual telephone surveys to gather data on the health status of US residents. The dataset contains 319795 rows with 18 attributes, ranging from whether the respondents have ever reported having heart disease, to their body mass index, set, race, and age, physical, and mental health status, to whether they smoke or drink alcohol, to whether they have had a stroke, difficulty walking or climbing stairs. Some attributes have boolean values of yes or no, such as smoking, drinking, and stroke, some have others have categorical values like age, race, and general health, and some have floating point values, such as physical and mental health.
+
+The dependent variable is under the column “HeartDisease”, which represents whether the respondents have ever reported having coronary heart disease (CHD) or myocardial infarction (MI) and the independent variables will be the remaining variables of the dataset after being further reduced. The majority of the samples in the dataset report not having heart disease. A little less than 300,000 people report never having heart disease, while 25,000 people report having heart disease out of the nearly 320,000 samples collected.
+
+We chose this dataset because it has data applicable to the residents of the United States, which allows additional users within the United States to get more accurate results. The goal of this project is to use generalized linear model to predict whether an individual is at risk of heart disease or not. With the result information, people will be able to seek medical advice before a heart attack or something else harmful happens and lead a healthier life. The original dataset from the CDC had nearly 300 variables that were reduced to 18 variables by the creator of the dataset. And our group plans on using all 18 variables to build the model.
+
+Firstly, we checked the numerical independent variables and found there exist some large outliers from the data because the maximum number is way much larger than the 3rd quartile in the summary table. Also, some values are not reasonable in real life. For example, a person's BMI could not be 75, and nobody would sleep around 24 hours per day.
+We drew the boxplots to see the distribution and outliers of the numerical data. From the boxplots, we decide to remove the rows that contain the top one percent and the bottom one percent of the `BMI` and `SleepTime` value in the dataset.
+
+
+
+```{r}
+continuous <- select_if(heart_data, is.numeric)
+summary(continuous)
+#we can observe large outliers here for the continuous variables in the summary table because the maximum number is way much larger than the 3rd quartile. 
+# ggplot(continuous, aes(x = BMI)) +
+#     geom_density(alpha = .2, fill = "#FF6666")
+# ggplot(continuous, aes(x = SleepTime)) +
+#     geom_density(alpha = .2, fill = "#FF6666")
+
+# the code here is used to see the distribution of the numeric data, as we have removed the outliers in the latter part, so we comment the graphs here.
+```
+
+
+```{r boxplot, fig_width= 6, fig_height= 4}
+#hd vs. bmi
+bp_bmi <- ggplot(heart_data, aes(x = HeartDisease, y = BMI)) +
+    geom_boxplot() +
+    stat_summary(fun = mean,
+        geom = "point",
+        size = 3,
+        color = "steelblue") +
+    theme_classic()
+
+#hd vs sleep time
+bp_st <- ggplot(heart_data, aes(x = HeartDisease, y = SleepTime)) +
+    geom_boxplot() +
+    stat_summary(fun = mean,
+        geom = "point",
+        size = 3,
+        color = "steelblue") +
+    theme_classic()
+
+#hd vs mh
+bp_mh <- ggplot(heart_data, aes(x = HeartDisease, y = MentalHealth)) +
+    geom_boxplot() +
+    stat_summary(fun = mean,
+        geom = "point",
+        size = 3,
+        color = "steelblue") +
+    theme_classic()
+
+#hd vs ph
+bp_ph <- ggplot(heart_data, aes(x = HeartDisease, y = PhysicalHealth)) +
+    geom_boxplot() +
+    stat_summary(fun = mean,
+        geom = "point",
+        size = 3,
+        color = "steelblue") +
+    theme_classic()
+ggarrange(bp_bmi, bp_st, bp_mh, bp_ph,
+          ncol = 2, nrow = 2)
+```
+
+
+```{r}
+#outlier cleaning
+#BMI
+heart_data1 <-heart_data
+top_one_percent <- quantile(heart_data1$BMI, .999)
+#top_one_percent
+lower_one_percent <- quantile(heart_data1$BMI, 0.001)
+#lower_one_percent
+
+heart_data2 <- heart_data1 %>%
+    filter(BMI<top_one_percent & BMI>lower_one_percent)
+
+#dim(heart_data2)
+#anyNA(heart_data2)
+
+#SleepTime
+top_one_percent <- quantile(heart_data2$SleepTime, .999)
+#top_one_percent
+lower_one_percent <- quantile(heart_data2$SleepTime, 0.001)
+#lower_one_percent
+
+heart_data <- heart_data2 %>%
+filter(SleepTime<top_one_percent & SleepTime>lower_one_percent)
+# dim(heart_data)
+# anyNA(heart_data)
+# 
+# continuous <- select_if(heart_data, is.numeric) 
+# summary(continuous) # use to check if we successfully remove the outliers
+
+```
+
+```{r}
+### This part is used to check the distributions of BMI and SleepTime after we remove the outliers
+
+# ggplot(continuous, aes(x = BMI)) +
+#     geom_density(alpha = .2, fill = "#FF6666")
+# 
+# # ggplot(continuous, aes(x = PhysicalHealth)) +
+# #     geom_density(alpha = .2, fill = "#FF6666")
+# # 
+# # ggplot(continuous, aes(x = MentalHealth)) +
+# #     geom_density(alpha = .2, fill = "#FF6666")
+# 
+# ggplot(continuous, aes(x = SleepTime)) +
+#     geom_density(alpha = .2, fill = "#FF6666")
+
+```
+
+
+
+Then, we look at the relationship between categorical predictors proportions and whether the person has heart disease to further understand the data.
+
+1. The person with higher BMI is more likely to have heart disease.
+
+2. The proportion of males with heart disease is larger than the proportion of females with heart disease.
+
+3. It is more likely for people who smoke to get heart disease.
+
+4. The probability of people of different races to get heart disease varies. And Asian and Hispanic people seem to have lower rate with heart disease. 
+
+5. People with fair or poor general health have higher possibility to have heart disease.
+
+6. Adults who reported doing physical activity or exercise during the past 30 days other than their regular job has lower chance to have heart disease.
+
+7. Surprisingly, heavy drinkers (adult men having more than 14 drinks per week and adult women having more than 7 drinks per week) have lower probability to have heart disease. But this might because of the people with poor health condition are not allowed to drink that often.
+
+8. If a person had a stroke before, he/she has higher chance to have heart disease.
+
+9. The more often people with physical illness and injury during the past 30 days, the more possible for him/her to have heart disease.
+
+10. There does not show any clear pattern between mental health and whether a person have heart disease.
+
+11. The heart disease becomes more prevalent as an individual increases in age.
+
+12. If a person has serious difficulty walking or climbing stairs, he/she has higher probability to have heart disease.
+
+13. People with diabetes (not during pregnancy) or borderline diabetes are more possible to have heart disease.
+
+14. People with asthma are more possible to have heart disease.
+
+15. People with kidney disease have much higher chance to have heart disease.
+
+16. Sleeping around six to eight hours per day has the lowest probability to get heart disease. Sleeping too much or too little might increase the risk of heart disease.
+
+17. If a person had skin cancer before, he/she has higher chance to have heart disease.
+
+
+
+
+
+```{r V1 fig1, message=F}
+hd <- heart_data[, c(1,2,3,4,9,15)]
+
+ggpairs(hd, legend = 1, aes(color = HeartDisease, alpha = 0.4)) +
+  theme(legend.position = "bottom") +
+  labs(fill = "HeartDisease")+
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+
+```{r V1 fig2, message=F}
+require(scales)
+#1
+#bmi
+hd_bmi <- ggplot(heart_data, aes(BMI, fill = HeartDisease)) + geom_density() +  labs(title = "Percentage by BMI ", x = "BMI", y = "Percentage")
+
+#sex
+hd_sex <- ggplot(heart_data, aes(Sex, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Sex", x = "Sex", y = "Percentage")
+
+#smoking
+hd_sm <- ggplot(heart_data, aes(Smoking, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Smoking status", x = "Smoking", y = "Percentage")
+
+#race
+hd_r <- ggplot(heart_data, aes(Race, fill = HeartDisease)) + geom_bar(position = "fill")  + labs(title = "Percentage by Race", x = "Race", y = "Percentage")
+hd_r_abbr <- hd_r + scale_x_discrete(labels = abbreviate) 
+#AL/N short for American Indian/Alaskan Native; Asin for Asian; Blck for Black; Hspn for Hispanic; Othr for others; Whit for White.
+
+#General health
+hd_gh <- ggplot(heart_data, aes(GenHealth, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by General Health", x = "General Health", y = "Percentage")+ theme(axis.text.x = element_text(angle = 15))
+
+#6
+#physical activity
+hd_pa <- ggplot(heart_data, aes(PhysicalActivity, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Physical Activity", x = "Physical Activity", y = "Percentage") 
+
+ggarrange(hd_bmi, hd_sex, hd_sm, hd_r_abbr, hd_gh, hd_pa,
+          ncol = 2, nrow = 3, labels = c('1','2', '3', '4', '5', '6'), widths = 3, heights = 3)
+```
+
+
+```{r V1 fig3, message=F,fig_width= 13, fig_height= 4}
+#7 Alcohol
+hd_ad <- ggplot(heart_data, aes(AlcoholDrinking, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by AlcoholDrinking", x = "AlcoholDrinking", y = "Percentage") 
+
+
+#Stroke
+hd_st <- ggplot(heart_data, aes(Stroke, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Stroke", x = "Stroke", y = "Percentage") 
+
+#Physical health
+hd_ph <- ggplot(heart_data, aes(PhysicalHealth, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Physical Health", x = "Physical Health", y = "Percentage") 
+
+#Mental health
+hd_mh <- ggplot(heart_data, aes(MentalHealth, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Mental Health", x = "Mental Health", y = "Percentage") 
+
+#AgeCategory
+hd_age <- ggplot(heart_data, aes(AgeCategory, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Age Category", x = "Age Category", y = "Percentage")
+hd_age_abbr= hd_age+coord_flip()  + scale_x_discrete(guide = ggplot2::guide_axis(n.dodge = 2))
+                  
+
+
+# 12
+#DiffWalking
+hd_di <- ggplot(heart_data, aes(DiffWalking, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by DiffWalking", x = "DiffWalking", y = "Percentage")
+
+ggarrange(hd_ad, hd_st, hd_ph, hd_mh, hd_age_abbr, hd_di,
+          ncol = 2, nrow = 3, labels = c('7','8','9','10','11','12'))
+```
+
+
+```{r V1 fig4, fig_width= 13, fig_height= 4}
+#Diabetic
+hd_diab <- ggplot(heart_data, aes(Diabetic, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Diabetic", x = "Diabetic", y = "Percentage") +coord_flip()+
+  scale_x_discrete(#guide = ggplot2::guide_axis(n.dodge = 2), 
+                     labels = function(x) stringr::str_wrap(x, width = 20))
+
+#Asthma
+hd_ast <- ggplot(heart_data, aes(Asthma, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Asthma", x = "Asthma", y = "Percentage") 
+
+#KidneyDisease
+hd_kdi <- ggplot(heart_data, aes(KidneyDisease, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Kidney Disease", x = "Disease", y = "Percentage") 
+
+#SleepTime
+hd_sti <- ggplot(heart_data, aes(SleepTime, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Sleep Time", x = "SleepTime", y = "Percentage") 
+
+#SkinCancer
+hd_sc <- ggplot(heart_data, aes(SkinCancer, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Skin Cancer", x = "SkinCancer", y = "Percentage") 
+ggarrange(hd_diab, hd_ast, hd_kdi, hd_sti, hd_sc,
+          ncol = 2, nrow = 3, labels = c('13','14','15','16','17'))
+```
+
+
+
+#### Training and Testing
+Since our dependent variable HeartDisease is binary and has only yes and no categories, we converted the values under HeartDisease to 0 and 1 with the ifelse function that has 0 representing the respondent with no reported heart disease and one representing the respondent with reported heart disease. To ensure the precision and accuracy of our model, we split heart_data into a training set and a testing set, named heart_train and heart_test respectively. Here we implemented a 80 - 20 ratio. The training set consists of randomly selected 80% of the total rows (without replacement), whereas the testing set being the 20% rest. Later we will develop a Generalized Linear Model base on the training set and check the model with the testing set. 
+```{r train & test, message=FALSE}
+# divide training set and testing set
+set.seed(2022)
+index<- sample(1:nrow(heart_data), nrow(heart_data)*0.8,replace=FALSE)
+heart_data$HeartDisease<-ifelse(heart_data$HeartDisease=="Yes",1,0)
+heart_train <- heart_data[index,]
+#dim(heart_train)
+heart_test <- heart_data[-index,]
+#dim(heart_test)
+
+#length(heart_train[[1]])
+#length(heart_test[[1]])
+#class(heart_data$HeartDisease)
+```
+
+
+#### GLM model
+```{r GLM unbalanced data}
+train_model <- glm(HeartDisease~., data = heart_train, family="binomial")
+summary(train_model)
+```
+We then used function glm() to fit the generalized linear model with the training set. Since the goal is to determine what are the significant variables leading to cardiovascular disease, we chose HeartDisease(Whether or not a respondent having heart disease) as the respondent variable and the other 17 variables, including BMI, Smoking, AlcoholDrinking, Stroke, PhysicalHealth, MentalHealth, DiffWalking, Sex, AgeCategory,Race, Diabetic, PhysicalActivity, GenHealth, SleepTime, Asthma, KidneyDisease, and SkinCancer, as the independent variables. 
+
+From the general linear model above, we looked at the p-values associated with each predictor and determined that the following predictors are statistically significant at a significance level of 0.05:
+
+The intercept is significant indicates that the value of the response variable(HeartDisease) is -6.2113 when the unit of all the predictors is 0.
+
+1. BMI: one unit increase in BMI is associated with an average change of 0.0092 of the response variable HeartDisease. 
+2. SMoking: one unit increase in Smoking(whether the respondent smokes) is associated with an average change of 0.3490 of the response variable HeartDisease. 
+3. AlcoholDrinking: one unit increase in AlcoholDrinking(whether the respondent drink alcohol) is associated with an average change of -0.2225 of the response variable HeartDisease. 
+4. Stroke: one unit increase in Stroke(whether the respondent had stroke before) is associated with an average change of 1.0353 of the response variable HeartDisease. 
+5. PhysicalHealth: one unit increase in PhysicalHealth is associated with an average change of 0.0026 of the response variable HeartDisease. 
+6. MentalHealth: one unit increase in MentalHealth is associated with an average change of 0.0048 of the response variable HeartDisease. 
+7. DiffWalking: one unit increase in DiffWalking(whether the respondent has difficulty in walking or climbing stairs) is associated with an average change of 0.2162 of the response variable HeartDisease. 
+8. Sex: one unit increase in Sex(Whether the respondent is male) is associated with an average change of 0.7040 of the response variable HeartDisease.  
+9. AgeCategory(except AgeCategory25-29): 30-34: 0.4939 35-39: 0.5225 40-44: 0.9756 45-49: 1.2917 50-54: 1.7095 55-59: 1.9234 60-64: 2.1799 65_69: 2.4352 70-74: 2.7276 75-79: 2.9173
+10. Race(except RaceOther): Asian:average change of  -0.5639 on HeartDisease. Black: average change of -0.3725 on HeartDisease.Hispanic: average change of  -0.3032 on HeartDisease.White:average change of  -0.1128 on HeartDisease.
+11. Diabetic: one unit increase in Diabetic(whether the respondent has diabetes) is associated with an average change of 0.4718(have diabetes) and 0.1182(not have diabetes but on the borderline) of the response variable HeartDisease. 
+12. GenHealth: Poor: average change of 1.9154 on HeartDisease. Fair: average change of 1.5226 on HeartDisease. Good: average change of 1.0412 on HeartDisease. Very good: average change of 0.4472 on HeartDisease.
+13. SleepTime: one unit increase in SleepTime is associated with an average change of -0.0280 of the response variable HeartDisease.
+14. Asthma: one unit increase in Asthma(whether the respondent have asthma) is associated with an average change of 0.2781 of the response variable HeartDisease.
+15. KidneyDisease: one unit increase in KidneyDisease(Whether the respondent have kidney disease) is associated with an average change of 0.5720 of the response variable HeartDisease.
+16. SkinCancer: one unit increase in SkinCancer(Whether the respondent have skin cncer) is associated with an average change of 0.1307 of the response variable HeartDisease. [6]
+
+#### Confusion Matrix
+```{r Confusion Matrix 1}
+#first need to have a set of predictions so that they can be compared to the actual targets.
+predict <- predict(train_model, heart_test, type = 'response')
+
+# confusion matrix
+table_mat <- table(heart_test$HeartDisease, predict > 0.5) 
+table_mat
+```
+We created a confusion matrix that provided a contrast of predicted values against true values. Each of its columns represents the true result(FALSE = don't have heart disease, TRUE = have heart disease), while each row represents the predicted result(0 = don't have heart disease, 1 = have heart disease). Precision looks at the accuracy of the positive prediction, while Recall is the ratio of positive instances that are correctly detected by the classifier. We calculated that precision = 0.5266 and recall = 0.1018. With these values, we then calculated the F1 score for the comparison of different models that we have done later. Since a higher F1 score represents a higher precision and recall, the model with the highest F1 score will the best one in our consideration. [7]
+
+
+```{r Accuracy 1}
+#calculate the model accuracy by summing the true positive + true negative over the total observation
+accuracy_Test <- sum(diag(table_mat)) / sum(table_mat)
+#accuracy_Test
+
+#this value is high but not informative (useless)
+```
+
+
+```{r Precision and Recall 1}
+#Precision looks at the accuracy of the positive prediction. 
+precision <- function(matrix) {
+	# True positive
+    tp <- matrix[2, 2]
+	# false positive
+    fp <- matrix[1, 2]
+    return (tp / (tp + fp))
+}
+
+
+#Recall is the ratio of positive instances that are correctly detected by the classifier
+recall <- function(matrix) {
+# true positive
+    tp <- matrix[2, 2]# false positive
+    fn <- matrix[2, 1]
+    return (tp / (tp + fn))
+}
+
+
+prec <- precision(table_mat)
+#prec
+rec <- recall(table_mat)
+#rec
+
+```
+
+
+```{r f1 value}
+f1 <- 2 * ((prec * rec) / (prec + rec))
+#f1
+```
+
+#### ROC Curve
+
+
+
+```{r ROC Curve 1, fig_width= 10, fig_height= 6}
+#the ROC curve shows the true positive rate (i.e., recall) against the false positive rate
+library(ROCR)
+ROCRpred <- prediction(predict, heart_test$HeartDisease)
+ROCRperf <- performance(ROCRpred, 'tpr', 'fpr')
+plot(ROCRperf, colorize = TRUE, text.adj = c(-0.2, 1.7))
+```
+
+The ROC Curve of this model indicates a trade off between true positive rate and false positive rate. Thus, the model that has a curve closer to the top left corner and more area under curve is considered better. Later, We will compare the ROC curve of each model as well. [8]
+
+
+
+
+
+Because the dataset contains significantly more people who have never reported having heart disease ( 292,422) compared to the people who have reported having heart disease (27,373), we must balance the data. Otherwise, it will lower the accuracy of our model and lead to biased conclusions. In order to solve this problem, we use the following method to balance the original dataset. We first select the rows according to "Yes"(1) or "No"(0) in HeartDisease. Then, we randomly select equal amount of data of "No" in `HeartDisease` as the amount of "Yes" in `HeartDisease` and recombine them with the original data that have heart disease, which provides us a new balanced dataset. Then, we try to use it to train the model again.
+
+## New Dataset
+
+```{r new balanced dataset}
+require(dplyr)
+# select the rows according to "Yes"(1) or "No"(0) in HeartDisease.
+HeartDiseaseYes <- filter(heart_data, HeartDisease == 1) # have heart disease
+HeartDiseaseNo <- filter(heart_data, HeartDisease == 0) #no heart disease
+a=length(HeartDiseaseYes[[1]])
+#a
+b=length(HeartDiseaseNo[[1]])
+#b
+
+# select equal amount of data of "No" as the amount of "Yes" to create balanced dataset
+index_new_no<- sample(1:nrow(HeartDiseaseNo), nrow(HeartDiseaseNo)*(a/b), replace=FALSE)
+data_new_no <- HeartDiseaseNo[index_new_no,]
+c=length(data_new_no[[1]])
+#c
+#check if a and c are equal, which indicates that there are equal amount of Yes and No of HeartDiseas in the newdataset
+
+
+# this would be the new balanced dataset
+data_new <- rbind(data_new_no,HeartDiseaseYes)
+
+#data_new <- 
+#lm(HeartDiseaseYes$HeartDisease~.,data=HeartDiseaseYes)
+
+```
+
+
+
+#### Data Visualization
+```{r}
+data_new[sapply(data_new, is.character)] <- lapply(data_new[sapply(data_new, is.character)], as.factor)
+data_new$HeartDisease <- as.factor(data_new$HeartDisease)
+
+```
+
+```{r V2 fig1, message=FALSE, fig_width= 13, fig_height= 12}
+hd_new <- data_new[, c(1,2,3,4,9,15)]
+
+ggpairs(hd_new, legend = 1, aes(color = HeartDisease, alpha = 0.4)) +
+  theme(legend.position = "bottom") +
+  labs(fill = "HeartDisease")+
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r V2 fig2, message=F}
+#1
+#bmi
+hd_bmi <- ggplot(data_new, aes(BMI, fill = HeartDisease)) + geom_density() +  labs(title = "Percentage by BMI ", x = "BMI", y = "Percentage")
+
+#sex
+hd_sex <- ggplot(data_new, aes(Sex, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Sex", x = "Sex", y = "Percentage")
+
+#smoking
+hd_sm <- ggplot(data_new, aes(Smoking, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Smoking status", x = "Smoking", y = "Percentage")
+
+#race
+hd_r <- ggplot(data_new, aes(Race, fill = HeartDisease)) + geom_bar(position = "fill")  + labs(title = "Percentage by Race", x = "Race", y = "Percentage")
+hd_r_abbr <- hd_r + scale_x_discrete(labels = abbreviate) 
+#AL/N short for American Indian/Alaskan Native; Asin for Asian; Blck for Black; Hspn for Hispanic; Othr for others; Whit for White.
+
+#General health
+hd_gh <- ggplot(data_new, aes(GenHealth, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by General Health", x = "General Health", y = "Percentage")+ theme(axis.text.x = element_text(angle = 15))
+
+#6
+#physical activity
+hd_pa <- ggplot(data_new, aes(PhysicalActivity, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Physical Activity", x = "Physical Activity", y = "Percentage") 
+
+ggarrange(hd_bmi, hd_sex, hd_sm, hd_r_abbr, hd_gh, hd_pa,
+          ncol = 2, nrow = 3, labels = c('1','2', '3', '4', '5', '6'))
+```
+
+
+
+```{r V2 fig3, message = FALSE}
+#7 Alcohol
+hd_ad <- ggplot(data_new, aes(AlcoholDrinking, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by AlcoholDrinking", x = "AlcoholDrinking", y = "Percentage") 
+
+
+#Stroke
+hd_st <- ggplot(data_new, aes(Stroke, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Stroke", x = "Stroke", y = "Percentage") 
+
+#Physical health
+hd_ph <- ggplot(data_new, aes(PhysicalHealth, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Physical Health", x = "Physical Health", y = "Percentage") 
+
+#Mental health
+hd_mh <- ggplot(data_new, aes(MentalHealth, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Mental Health", x = "Mental Health", y = "Percentage") 
+
+#AgeCategory
+hd_age <- ggplot(data_new, aes(AgeCategory, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Age Category", x = "Age Category", y = "Percentage")
+hd_age_abbr= hd_age+coord_flip()  + scale_x_discrete(guide = ggplot2::guide_axis(n.dodge = 2))
+                  
+# 12
+#DiffWalking
+hd_di <- ggplot(data_new, aes(DiffWalking, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by DiffWalking", x = "DiffWalking", y = "Percentage")
+
+ggarrange(hd_ad, hd_st, hd_ph, hd_mh, hd_age_abbr, hd_di,
+          ncol = 2, nrow = 3, 
+          labels = c('7','8','9','10','11','12'))
+```
+
+
+
+```{r V2 fig4, message = FALSE}
+#Diabetic
+hd_diab <- ggplot(data_new, aes(Diabetic, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Diabetic", x = "Diabetic", y = "Percentage") +coord_flip()+
+  scale_x_discrete(#guide = ggplot2::guide_axis(n.dodge = 2), 
+                     labels = function(x) stringr::str_wrap(x, width = 20))
+
+#Asthma
+hd_ast <- ggplot(data_new, aes(Asthma, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Asthma", x = "Asthma", y = "Percentage") 
+
+#KidneyDisease
+hd_kdi <- ggplot(data_new, aes(KidneyDisease, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Kidney Disease", x = "Disease", y = "Percentage") 
+
+#SleepTime
+hd_sti <- ggplot(data_new, aes(SleepTime, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Sleep Time", x = "SleepTime", y = "Percentage") 
+
+#SkinCancer
+hd_sc <- ggplot(data_new, aes(SkinCancer, fill = HeartDisease)) + geom_bar(position = "fill") +  labs(title = "Percentage by Skin Cancer", x = "SkinCancer", y = "Percentage") 
+ggarrange(hd_diab, hd_ast, hd_kdi, hd_sti, hd_sc,
+          ncol = 2, nrow = 3, labels = c('13','14','15','16','17'))
+```
+
+
+
+
+
+
+
+## Training and Testing of Balanced Data
+```{r}
+#repeat the analysis again as in the unbalanced part
+# divide training set and testing set
+set.seed(2023)
+index_new<- sample(1:nrow(data_new), nrow(data_new)*0.8,replace=FALSE)
+train_new<- data_new[index_new,]
+#dim(heart_train)
+test_new <- data_new[-index_new,]
+#dim(heart_test)
+```
+
+#### GLM Model
+```{r}
+#Changing Variables
+train_new$GenHealth <- ifelse(train_new$GenHealth != "Poor", ifelse(train_new$GenHealth != "Fair", ifelse(train_new$GenHealth != 'Good', ifelse(train_new$GenHealth != 'Very good', ifelse(train_new$GenHealth != 'Excellent',train_new$GenHealth, 5), 4), 3), 2), 1)
+```
+
+```{r GLM model balanced data}
+train_new_model <- glm(HeartDisease~., data = train_new, family="binomial")
+summary(train_new_model)
+```
+
+Similar to our first model, we looked at the p-values associated with each predictor and determined that the following predictors are statistically significant at a significance level of 0.05:
+
+The intercept is significant and indicates that the value of the response variable(HeartDisease) is -1.5849 when the unit of all the predictors is 0.
+
+
+1. BMI: one unit increase in BMI is associated with an average change of 0.0083 of the response variable HeartDisease. 
+2. SMoking: one unit increase in Smoking(whether the respondent smokes) is associated with an average change of 0.3523 of the response variable HeartDisease. 
+3. AlcoholDrinking: one unit increase in AlcoholDrinking(whether the respondent drink alcohol) is associated with an average change of -0.2217 of the response variable HeartDisease. 
+4. Stroke: one unit increase in Stroke(whether the respondent had stroke before) is associated with an average change of 1.1986 of the response variable HeartDisease. 
+5. PhysicalHealth: one unit increase in PhysicalHealth is associated with an average change of 0.0048 of the response variable HeartDisease. 
+6. MentalHealth: one unit increase in MentalHealth is associated with an average change of 0.0056 of the response variable HeartDisease. 
+7. DiffWalking: one unit increase in DiffWalking(whether the respondent has difficulty in walking or climbing stairs) is associated with an average change of 0.2581 of the response variable HeartDisease. 
+8. Sex: one unit increase in Sex(Whether the respondent is male) is associated with an average change of 0.7040 of the response variable HeartDisease.  
+9. AgeCategory: 25-29: 0.3633 30-34: 0.7025 35-39: 0.7309 40-44: 1.0565 45-49: 1.3888 50-54: 1.7762 55-59: 2.0781 60-64: 2.4097 65_69: 2.6517 70-74: 2.9804 75-79: 3.1388 80 or older: 3.4104
+10. Race(except RaceOther, RaceWhite, RaceHispanic): Asian:average change of -0.4698 on HeartDisease. Black: average change of -0.2218 on HeartDisease.
+11. Diabetic(except DiabeticNo, borderline diabetes and DiabetesYes(during pregnancy)): one unit increase in Diabetic(whether the respondent has diabetes) is associated with an average change of 0.4811(have diabetes) of the response variable HeartDisease. 
+12. GenHealth: one unit increase in GenHealth is associated with an average change of -0.5149 of the response variable HeartDisease.
+13. SleepTime: one unit increase in SleepTime is associated with an average change of -0.0333 of the response variable HeartDisease.
+14. Asthma: one unit increase in Asthma(whether the respondent have asthma) is associated with an average change of 0.3184 of the response variable HeartDisease.
+15. KidneyDisease: one unit increase in KidneyDisease(Whether the respondent have kidney disease) is associated with an average change of 0.4478 of the response variable HeartDisease.
+16. SkinCancer: one unit increase in SkinCancer(Whether the respondent have skin cncer) is associated with an average change of 0.1358 of the response variable HeartDisease.
+
+The AIC of the balanced model is significantly lower than the AIC of our first unbalanced model, 43,270 < 115,609. Thus, we considered the balanced model providing a better fit. [8]
+
+#### Confusion Matrix
+
+Following the same steps as we did for the unbalanced model, we developed the confusion matrix and calculated the f1 score of our balanced model, which is 0.7681. The f1 score of the balanced model is larger than that of the unbalanced model(0.7681 > 0.5266), indicating a higher precision and recall. Thus, we considered that the balanced model is better than the unbalanced model. [7]
+
+```{r}
+test_new$GenHealth <- ifelse(test_new$GenHealth != "Poor", ifelse(test_new$GenHealth != "Fair", ifelse(test_new$GenHealth != 'Good', ifelse(test_new$GenHealth != 'Very good', ifelse(test_new$GenHealth != 'Excellent',test_new$GenHealth,5), 4),3), 2), 1)
+```
+
+```{r}
+predict_new <- predict(train_new_model, test_new, type = 'response')
+
+# confusion matrix
+table_mat_new <- table(test_new$HeartDisease, predict_new > 0.5) 
+table_mat_new
+```
+
+
+```{r}
+accuracy_Test_new <- sum(diag(table_mat_new)) / sum(table_mat_new)
+#accuracy_Test_new
+```
+
+
+```{r}
+# #Precision looks at the accuracy of the positive prediction. 
+# precision <- function(matrix) {
+#     tp <- matrix[2, 2] # true positive
+#     fp <- matrix[1, 2] # false positive
+#     return (tp / (tp + fp)) # true positive/(true positive + false positive)
+# }
+# 
+# 
+# #Recall is the ratio of positive instances that are correctly detected by the classifier
+# recall <- function(matrix) {
+# # true positive
+#     tp <- matrix[2, 2]# false positive
+#     fn <- matrix[2, 1]
+#     return (tp / (tp + fn))
+# }
+
+prec_new <- precision(table_mat_new)
+#prec_new
+rec_new <- recall(table_mat_new)
+#rec_new
+```
+
+
+```{r ROC curve 2, fig_width= 13, fig_height= 8}
+#the ROC curve shows the true positive rate (i.e., recall) against the false positive rate
+ROCRpred_new <- prediction(predict_new, test_new$HeartDisease)
+ROCRperf_new <- performance(ROCRpred_new, 'tpr', 'fpr')
+plot(ROCRperf_new, colorize = TRUE, text.adj = c(-0.2, 1.7))
+```
+
+From visualizing the ROC curves of both models, we are able to determine that the curve of the balanced model has more area under curve and is closer to the upper left corner. Therefore, together with the results we obtained through the  comparisons of f1 score and AIC, we considered that the balanced model is better than the unbalanced model.
+
+
+```{r}
+# discrete <- select_if(data, is.character)
+# summary(discrete)
+```
+
+
+
+# Conclusion
+
+### Questions
+To answer the question we asked: 
+
+1. What are the significant variables leading to heart disease? 
+We can see there are multiple variables leading to heart disease according to the Balanced GLM model: BMI, Smoking, Alcohol Drinking, Stroke, Mental Health, Difficulty Walking, Male, Age, Asian, Diabetics, Gen Health, Sleep Time, Asthma, Kidney Disease, and Skin Cancer. The most significant variable according to the coefficient estimates is 80 years and older people are most likely to have heart disease. Also, we can see through the trend of coefficient estimate that as people get older, they are more likely to have heart disease.
+
+2. How precise is our prediction?
+The precision of an estimate for the unbalanced model is 0.526616, and the precision of an estimate for the balanced model is 0.7605198 which is considered in the good range and much higher than the unbalanced one. 
+
+### Analysis
+
+Among all the variables, we can conclude BMI, stroke, and older age affect heart disease the most by comparing the absolute value of coefficient estimates.
+
+Although through visualization, we cannot determine which curve is closer to the upper left corner; however, by comparing the values of AIC (115609 > 30852) and F1 scores (0.1705928 < 0.7681), we are still able to determine that the balanced model provides a better fit than the unbalanced model. 
+
+
+
+
+
+
+
+
+
+
+
+# References
+
+#### Dataset:
+https://www.kaggle.com/datasets/kamilpytlak/personal-key-indicators-of-heart-disease
+
+#### Literature Reivew:
+[1] “Cardiovascular Diseases (Cvds).” World Health Organization, World Health Organization, 11 June 2021, www.who.int/news-room/fact-sheets/detail/cardiovascular-diseases- (cvds).
+
+[2] Bansal, Manish. “Cardiovascular Disease and COVID-19.” Diabetes Metabolic Syndrome: Clinical Research Reviews, vol. 14, no. 3, May 2020, pp. 247–250., doi:https://doi.org/10.1016/
+
+[3] Ridker, Paul M. “Clinical Application of C-Reactive Protein for Cardiovascular Disease Detection and Prevention.” Circulation, vol. 107, no. 3, 2003, pp. 363–369., doi:10.1161/01.cir.0000053730.47739.3c.
+
+[4] Celermajer, David S., et al. “Cardiovascular Disease in the Developing World.” Journal of the American College of Cardiology, vol. 60, no. 14, Oct. 2012, pp. 1207–1216., doi:10.1016/j.jacc.2012.03.074.
+
+[5] Getz, Godfrey S., and Catherine A. Reardon. “Nutrition and Cardiovascular Disease.” Arteriosclerosis, Thrombosis, and Vascular Biology, vol. 27, no. 12, 22 Oct. 2007, pp. 2499–2506., doi:10.1161/atvbaha.107.155853.
+
+[6] “Training and Test Sets: Splitting Data; Machine Learning; Google Developers.” Google, 18 July 2022, https://developers.google.com/machine-learning/crash-course/training-and-test-sets/splitting-data?hl=en. 
+
+[7]“How to Interpret Glm Output in R (With Example).” Statology, 23 Feb. 2022, www.statology.org/interpret-glm-output-in-r. Accessed 7 Dec. 2022. 
+
+[8]“How to Calculate F1 Score in R (Including Example).” Statology, 8 Sept. 2021, www.statology.org/f1-score-in-r. Accessed 6 Dec. 2022.
+
+[9]Chan, Carmen. “What Is a ROC Curve - How to Interpret ROC Curves.” Displayr, 23 Aug. 2022, www.displayr.com/what-is-a-roc-curve-how-to-interpret-it.
